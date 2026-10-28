@@ -43,6 +43,7 @@ class AdminCommandCenter:
                 help_msg = (
                     "⚡ **Autonomous Telegram Mirror Command Center** ⚡\n\n"
                     "**Available Commands:**\n"
+                    "• `/channels` - List all your joined channels & their IDs\n"
                     "• `/mappings` - List all channel routes & status\n"
                     "• `/add <source> <target> [bot]` - Add new channel route\n"
                     "• `/del <id>` - Remove a channel route\n"
@@ -53,6 +54,21 @@ class AdminCommandCenter:
                     "• `/test <source_id>` - Test conversion on latest post\n"
                 )
                 await event.reply(help_msg)
+
+            elif cmd == "/channels":
+                await event.reply("🔍 Scanning your joined channels and fetching IDs...")
+                dialogs = await self.client.get_dialogs()
+                lines = ["📢 **Your Joined Channels & Numeric IDs:**\n"]
+                count = 0
+                for d in dialogs:
+                    if d.is_channel:
+                        username = f"@{d.entity.username}" if getattr(d.entity, "username", None) else "Private (No @)"
+                        lines.append(f"• **{d.name}**\n  ID: `{d.id}` | {username}\n")
+                        count += 1
+                if count == 0:
+                    await event.reply("No channels found on this account.")
+                else:
+                    await event.reply("\n".join(lines))
 
             elif cmd == "/mappings":
                 mappings = db.get_mappings()
