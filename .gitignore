@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local SQLite databases & temp folders
+*.db
+temp_media/
+
+# Local session files & secrets
+*.session
+*.session-journal
+string_session.txt
+.env
+
+# Virtual environment (if created)
+venv/
+.venv/
+env/

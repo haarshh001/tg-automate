@@ -1,0 +1,6 @@
+telethon>=1.36.0
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pymongo>=4.6.0
+python-dotenv>=1.0.0
+cryptg>=0.4.0
