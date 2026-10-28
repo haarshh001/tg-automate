@@ -37,8 +37,34 @@ def health_check():
 
 
 # ------------------------------------------------------------------------------
-# REST API (For dynamic controls & settings)
+# REST API (For dynamic controls, channels & settings)
 # ------------------------------------------------------------------------------
+@app.get("/api/user-channels", dependencies=[Depends(verify_credentials)])
+async def api_get_user_channels(request: Request):
+    """Fetches all joined channels & groups directly from Telegram via Telethon."""
+    client = getattr(request.app.state, "telethon_client", None)
+    if not client or not client.is_connected():
+        return []
+    try:
+        dialogs = await client.get_dialogs()
+        channels = []
+        for d in dialogs:
+            if d.is_channel:
+                entity = d.entity
+                username = getattr(entity, "username", None)
+                is_admin = getattr(entity, "creator", False) or bool(getattr(entity, "admin_rights", None))
+                channels.append({
+                    "id": str(d.id),
+                    "name": d.name,
+                    "username": f"@{username}" if username else "No Username (Private)",
+                    "is_admin": is_admin
+                })
+        return channels
+    except Exception as e:
+        print(f"[API Error] Failed fetching dialogs: {e}")
+        return []
+
+
 @app.get("/api/mappings", dependencies=[Depends(verify_credentials)])
 def api_get_mappings():
     return db.get_mappings()
@@ -102,7 +128,7 @@ def api_export_backup():
 
 
 # ------------------------------------------------------------------------------
-# GLASSMORPHISM DARK-MODE WEB DASHBOARD
+# FULLY ADVANCED GLASSMORPHISM WEB DASHBOARD
 # ------------------------------------------------------------------------------
 DASHBOARD_HTML = """
 <!DOCTYPE html>
@@ -110,7 +136,7 @@ DASHBOARD_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Autonomous Mirror | Control Center</title>
+    <title>Autonomous Telegram Mirror | Control Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -126,7 +152,7 @@ DASHBOARD_HTML = """
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
         body { background: var(--bg); color: var(--text-main); min-height: 100vh; padding: 24px; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1240px; margin: 0 auto; }
         
         /* Header */
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 16px; }
@@ -141,13 +167,13 @@ DASHBOARD_HTML = """
         .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; color: #fff; }
 
         /* Navigation Tabs */
-        .nav-tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; }
-        .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 15px; font-weight: 600; padding: 8px 18px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; flex-wrap: wrap; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .tab-btn.active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3); }
 
         /* Tables & Content */
         .content-box { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 22px; backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-        .box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .btn { background: var(--primary); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
         .btn:hover { box-shadow: 0 0 18px var(--primary-glow); }
         .btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); }
@@ -166,12 +192,16 @@ DASHBOARD_HTML = """
         input:checked + .slider:before { transform: translateX(20px); }
 
         /* Modal & Forms */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: #131a29; border: 1px solid var(--card-border); border-radius: 14px; width: 500px; max-width: 90%; padding: 24px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; padding: 20px; }
+        .modal-content { background: #131a29; border: 1px solid var(--card-border); border-radius: 16px; width: 620px; max-width: 95%; padding: 26px; max-height: 90vh; overflow-y: auto; }
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 10px 14px; background: #0c121e; border: 1px solid var(--card-border); border-radius: 8px; color: white; font-size: 14px; }
-        .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; background: #0c121e; border: 1px solid var(--card-border); border-radius: 8px; color: white; font-size: 14px; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+        .advanced-accordion { background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); border-radius: 10px; padding: 14px; margin-top: 14px; }
+        .advanced-header { font-size: 13px; font-weight: 600; color: #60a5fa; cursor: pointer; display: flex; justify-content: space-between; }
+        .advanced-body { display: none; margin-top: 14px; }
     </style>
 </head>
 <body>
@@ -208,7 +238,8 @@ DASHBOARD_HTML = """
 
         <!-- Tabs Navigation -->
         <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('mappings')">Channel Mappings</button>
+            <button class="tab-btn active" onclick="switchTab('mappings')">Channel Routes</button>
+            <button class="tab-btn" onclick="switchTab('explorer')">🔍 Browse My Telegram Channels</button>
             <button class="tab-btn" onclick="switchTab('history')">Live Database History</button>
             <button class="tab-btn" onclick="switchTab('settings')">Telegram Account & Credentials</button>
         </div>
@@ -236,7 +267,32 @@ DASHBOARD_HTML = """
             </table>
         </div>
 
-        <!-- TAB 2: Live Database History -->
+        <!-- TAB 2: Browse My Telegram Channels -->
+        <div id="tab-explorer" class="content-box" style="display:none;">
+            <div class="box-header">
+                <h3>My Joined Telegram Channels & Groups</h3>
+                <button class="btn btn-secondary" onclick="loadUserChannels()">🔄 Refresh Channels</button>
+            </div>
+            <p style="color:#94a3b8; font-size:13px; margin-bottom:16px;">
+                Here are all the channels your Telegram account is joined to. Click <strong>+ Create Route</strong> to instantly set any channel as your Source or Target!
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Channel Name</th>
+                        <th>Channel Numeric ID</th>
+                        <th>Username / Privacy</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="explorer-body">
+                    <tr><td colspan="5" style="text-align:center; color:#64748b;">Scanning your Telegram account...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 3: Live Database History -->
         <div id="tab-history" class="content-box" style="display:none;">
             <div class="box-header">
                 <h3>Live Post & Link History (Stored in MongoDB)</h3>
@@ -259,7 +315,7 @@ DASHBOARD_HTML = """
             </table>
         </div>
 
-        <!-- TAB 3: Telegram Account & Settings -->
+        <!-- TAB 4: Telegram Account & Settings -->
         <div id="tab-settings" class="content-box" style="display:none;">
             <div class="box-header">
                 <h3>Telegram Credentials (Stored in MongoDB)</h3>
@@ -302,45 +358,97 @@ DASHBOARD_HTML = """
         </div>
     </div>
 
-    <!-- Modal for Adding Route -->
+    <!-- Datalist for Channel Auto-Suggestions -->
+    <datalist id="channel-suggestions"></datalist>
+
+    <!-- FULLY ADVANCED CUSTOM ROUTE MODAL -->
     <div id="addModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-bottom:16px;">Add New Channel Route</h3>
+            <h3 style="margin-bottom:16px; font-size:18px;">Add New Custom Channel Route</h3>
+            
             <div class="form-group">
                 <label>Route Friendly Name</label>
                 <input type="text" id="m_name" placeholder="e.g. VIP Leaks Mirror">
             </div>
-            <div class="form-group">
-                <label>Source Channel (ID or @username)</label>
-                <input type="text" id="m_source" placeholder="e.g. -1003801941219">
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+                <div class="form-group">
+                    <label>Source Channel (Pick or Paste ID)</label>
+                    <input type="text" id="m_source" list="channel-suggestions" placeholder="Pick channel or paste ID">
+                </div>
+                <div class="form-group">
+                    <label>Target Channel (Pick or Paste ID)</label>
+                    <input type="text" id="m_target" list="channel-suggestions" placeholder="Pick channel or paste ID">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Target Channel (ID or @username)</label>
-                <input type="text" id="m_target" placeholder="e.g. -1004333951561 or @mychannel">
-            </div>
+
             <div class="form-group">
                 <label>Converter Bot</label>
                 <input type="text" id="m_bot" value="DW2DW_LinkConverterBot">
             </div>
+
             <div class="form-group">
-                <label>Optional Header Text</label>
+                <label>Custom Header Banner (Optional)</label>
                 <input type="text" id="m_header" placeholder="🔥 EXCLUSIVE UPDATE 🔥">
             </div>
+
             <div class="form-group">
-                <label>Optional Footer Text</label>
+                <label>Custom Footer Banner (Optional)</label>
                 <input type="text" id="m_footer" placeholder="👉 Join @mychannel for more!">
             </div>
+
+            <!-- Advanced Options Accordion -->
+            <div class="advanced-accordion">
+                <div class="advanced-header" onclick="toggleAdvanced()">
+                    <span>⚙️ Advanced Custom Settings (Watermarks, Buttons, Delays)</span>
+                    <span id="acc-arrow">▼</span>
+                </div>
+                <div id="advanced-fields" class="advanced-body">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Replace Watermark (@mention / link)</label>
+                            <input type="text" id="m_wm_old" placeholder="e.g. @old_channel">
+                        </div>
+                        <div class="form-group">
+                            <label>Replace With Your Handle</label>
+                            <input type="text" id="m_wm_new" placeholder="e.g. @genz454">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label>Inline Button Text</label>
+                            <input type="text" id="m_btn_text" placeholder="e.g. ⚡ Watch Online">
+                        </div>
+                        <div class="form-group">
+                            <label>Post Delay (Seconds)</label>
+                            <input type="number" id="m_delay" value="2" min="0" max="30">
+                        </div>
+                    </div>
+
+                    <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" id="m_strip" style="width:18px; height:18px;">
+                        <label for="m_strip" style="margin:0; font-size:13px; color:#cbd5e1; cursor:pointer;">
+                            Strip unconverted 3rd-party links from caption
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-actions">
                 <button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
-                <button class="btn" onclick="saveNewRoute()">Save Route</button>
+                <button class="btn" onclick="saveNewRoute()">Save Custom Route</button>
             </div>
         </div>
     </div>
 
     <script>
+        let cachedChannels = [];
+
         function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-mappings').style.display = 'none';
+            document.getElementById('tab-explorer').style.display = 'none';
             document.getElementById('tab-history').style.display = 'none';
             document.getElementById('tab-settings').style.display = 'none';
 
@@ -348,6 +456,10 @@ DASHBOARD_HTML = """
                 document.getElementById('tab-mappings').style.display = 'block';
                 event.target.classList.add('active');
                 loadMappings();
+            } else if (tab === 'explorer') {
+                document.getElementById('tab-explorer').style.display = 'block';
+                event.target.classList.add('active');
+                loadUserChannels();
             } else if (tab === 'history') {
                 document.getElementById('tab-history').style.display = 'block';
                 event.target.classList.add('active');
@@ -398,6 +510,53 @@ DASHBOARD_HTML = """
                     </tr>
                 `).join('');
             } catch (e) { console.error(e); }
+        }
+
+        async function loadUserChannels() {
+            const tbody = document.getElementById('explorer-body');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">Scanning your Telegram account...</td></tr>';
+            try {
+                const res = await fetch('/api/user-channels');
+                cachedChannels = await res.json();
+                
+                // Populate Datalist
+                const datalist = document.getElementById('channel-suggestions');
+                datalist.innerHTML = cachedChannels.map(c => `
+                    <option value="${c.id}">${c.name} (${c.username})</option>
+                `).join('');
+
+                if (!cachedChannels.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">No channels found or Telegram is connecting. Try refreshing in 5 seconds.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = cachedChannels.map(c => `
+                    <tr>
+                        <td><strong>${c.name}</strong></td>
+                        <td><code>${c.id}</code></td>
+                        <td><span style="color:${c.username.startsWith('@') ? '#60a5fa' : '#94a3b8'};">${c.username}</span></td>
+                        <td>
+                            <span class="badge" style="${c.is_admin ? 'background:rgba(59,130,246,0.15); color:#60a5fa;' : 'background:rgba(255,255,255,0.05); color:#94a3b8;'}">
+                                ${c.is_admin ? 'Admin / Creator' : 'Member'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="quickCreateRoute('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
+                                + Set as Source
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#ef4444;">Error loading channels. Please ensure bot is connected.</td></tr>';
+            }
+        }
+
+        function quickCreateRoute(channelId, channelName) {
+            openAddModal();
+            document.getElementById('m_name').value = `${channelName} to Target`;
+            document.getElementById('m_source').value = channelId;
         }
 
         async function loadHistory() {
@@ -474,23 +633,55 @@ DASHBOARD_HTML = """
             }
         }
 
-        function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function toggleAdvanced() {
+            const body = document.getElementById('advanced-fields');
+            const arrow = document.getElementById('acc-arrow');
+            if (body.style.display === 'block') {
+                body.style.display = 'none';
+                arrow.innerText = '▼';
+            } else {
+                body.style.display = 'block';
+                arrow.innerText = '▲';
+            }
+        }
+
+        function openAddModal() { 
+            document.getElementById('addModal').style.display = 'flex'; 
+            if (!cachedChannels.length) loadUserChannels();
+        }
         function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
 
         async function saveNewRoute() {
+            const wmOld = document.getElementById('m_wm_old').value.trim();
+            const wmNew = document.getElementById('m_wm_new').value.trim();
+            const replacements = {};
+            if (wmOld) replacements[wmOld] = wmNew;
+
+            const btnText = document.getElementById('m_btn_text').value.trim();
+            const buttons = [];
+            if (btnText) {
+                buttons.push({ text: btnText, type: 'converted_url' });
+            }
+
             const payload = {
-                name: document.getElementById('m_name').value || 'New Route',
+                name: document.getElementById('m_name').value || 'New Custom Route',
                 source_channel: document.getElementById('m_source').value,
                 target_channel: document.getElementById('m_target').value,
                 converter_bot: document.getElementById('m_bot').value,
                 header_text: document.getElementById('m_header').value,
                 footer_text: document.getElementById('m_footer').value,
+                watermark_replacements: replacements,
+                inline_buttons: buttons,
+                strip_unconverted: document.getElementById('m_strip').checked,
+                post_delay_seconds: parseInt(document.getElementById('m_delay').value) || 2,
                 enabled: true
             };
+
             if (!payload.source_channel || !payload.target_channel) {
-                alert('Source Channel and Target Channel are required!');
+                alert('Both Source Channel and Target Channel are required!');
                 return;
             }
+
             await fetch('/api/mappings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -504,6 +695,7 @@ DASHBOARD_HTML = """
         // Init
         loadStats();
         loadMappings();
+        loadUserChannels();
         setInterval(loadStats, 10000);
     </script>
 </body>

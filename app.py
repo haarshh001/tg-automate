@@ -68,6 +68,7 @@ async def main():
         print(f"[+] Database: {db.db_type.upper()}")
 
         # 2. Attach Forwarder & Admin Command Center
+        fastapi_app.state.telethon_client = client
         forwarder = ChannelForwarderService(client)
         forwarder.register_handlers()
         print("[+] Channel Forwarder & Album Aggregator registered.")
