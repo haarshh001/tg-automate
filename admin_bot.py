@@ -17,11 +17,18 @@ class AdminCommandCenter:
         self.converter = LinkConverterService(client)
 
     def register_handlers(self):
-        @self.client.on(events.NewMessage(incoming=True))
+        @self.client.on(events.NewMessage())
         async def admin_handler(event):
+            # Only listen to private messages
+            if not event.is_private:
+                return
+
             sender_id = event.sender_id
-            # Security: Only authorized Admin (Harsh) can execute commands
-            if sender_id != config.ADMIN_USER_ID:
+            chat_id = event.chat_id
+            admin_id = config.ADMIN_USER_ID
+
+            # Security: Authorized if sent in "Saved Messages" (self-chat) OR from ADMIN_USER_ID
+            if sender_id != admin_id and chat_id != admin_id:
                 return
 
             text = event.raw_text.strip()
