@@ -36,7 +36,8 @@ class AdminCommandCenter:
                 return
 
             parts = text.split(maxsplit=2)
-            cmd = parts[0].lower()
+            cmd = parts[0].split("@")[0].lower()
+            print(f"[Admin] Received command '{cmd}' from {sender_id} in chat {chat_id}")
 
             if cmd in ["/start", "/help"]:
                 help_msg = (
