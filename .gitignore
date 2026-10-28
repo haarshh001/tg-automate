@@ -12,6 +12,8 @@ temp_media/
 *.session-journal
 string_session.txt
 .env
+.env.local
+.env.*
 
 # Virtual environment (if created)
 venv/
