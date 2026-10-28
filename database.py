@@ -115,13 +115,15 @@ class UniversalDatabase:
     # TELEGRAM SETTINGS & CREDENTIALS (Stored in MongoDB)
     # --------------------------------------------------------------------------
     def get_telegram_config(self) -> Dict[str, Any]:
-        """Loads Telegram API credentials and session string from MongoDB."""
+        """Loads Telegram API credentials and settings directly from MongoDB."""
         defaults = {
-            "api_id": config.DEFAULT_API_ID,
-            "api_hash": config.DEFAULT_API_HASH,
+            "api_id": 34009775,
+            "api_hash": "9ba003127b7e7fc8db945491ba25f733",
             "string_session": "",
-            "admin_user_id": config.DEFAULT_ADMIN_USER_ID,
-            "default_converter_bot": config.DEFAULT_CONVERTER_BOT
+            "admin_user_id": 8898097352,
+            "default_converter_bot": "DW2DW_LinkConverterBot",
+            "bot_convert_timeout": 25,
+            "album_buffer_time": 2.0
         }
 
         if self.db_type == "mongodb":
@@ -132,7 +134,9 @@ class UniversalDatabase:
                     "api_hash": str(doc.get("api_hash", defaults["api_hash"])),
                     "string_session": str(doc.get("string_session", "")),
                     "admin_user_id": int(doc.get("admin_user_id", defaults["admin_user_id"])),
-                    "default_converter_bot": str(doc.get("default_converter_bot", defaults["default_converter_bot"]))
+                    "default_converter_bot": str(doc.get("default_converter_bot", defaults["default_converter_bot"])),
+                    "bot_convert_timeout": int(doc.get("bot_convert_timeout", defaults["bot_convert_timeout"])),
+                    "album_buffer_time": float(doc.get("album_buffer_time", defaults["album_buffer_time"]))
                 }
         else:
             with sqlite3.connect(self.sqlite_path) as conn:
@@ -145,24 +149,18 @@ class UniversalDatabase:
                     except Exception:
                         pass
 
-        # If not found in DB, check local string_session.txt
-        if os.path.exists("string_session.txt"):
-            try:
-                with open("string_session.txt", "r") as f:
-                    defaults["string_session"] = f.read().strip()
-            except Exception:
-                pass
-
         return defaults
 
     def save_telegram_config(self, cfg: Dict[str, Any]):
-        """Saves or updates Telegram API credentials and session string in MongoDB."""
+        """Saves or updates Telegram API credentials and settings in MongoDB."""
         data = {
-            "api_id": int(cfg.get("api_id", config.DEFAULT_API_ID)),
-            "api_hash": str(cfg.get("api_hash", config.DEFAULT_API_HASH)).strip(),
+            "api_id": int(cfg.get("api_id", 34009775)),
+            "api_hash": str(cfg.get("api_hash", "9ba003127b7e7fc8db945491ba25f733")).strip(),
             "string_session": str(cfg.get("string_session", "")).strip(),
-            "admin_user_id": int(cfg.get("admin_user_id", config.DEFAULT_ADMIN_USER_ID)),
-            "default_converter_bot": str(cfg.get("default_converter_bot", config.DEFAULT_CONVERTER_BOT)).strip()
+            "admin_user_id": int(cfg.get("admin_user_id", 8898097352)),
+            "default_converter_bot": str(cfg.get("default_converter_bot", "DW2DW_LinkConverterBot")).strip(),
+            "bot_convert_timeout": int(cfg.get("bot_convert_timeout", 25)),
+            "album_buffer_time": float(cfg.get("album_buffer_time", 2.0))
         }
 
         if self.db_type == "mongodb":

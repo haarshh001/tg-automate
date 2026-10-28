@@ -29,8 +29,11 @@ def get_telegram_client() -> TelegramClient:
     api_hash = tg_cfg.get("api_hash") or config.DEFAULT_API_HASH
     session_string = (tg_cfg.get("string_session") or "").strip()
 
-    # Update admin ID in config from DB
+    # Update runtime settings directly from MongoDB
     config.ADMIN_USER_ID = tg_cfg.get("admin_user_id") or config.DEFAULT_ADMIN_USER_ID
+    config.DEFAULT_CONVERTER_BOT = tg_cfg.get("default_converter_bot") or "DW2DW_LinkConverterBot"
+    config.BOT_CONVERT_TIMEOUT = tg_cfg.get("bot_convert_timeout") or 25
+    config.ALBUM_BUFFER_TIME = tg_cfg.get("album_buffer_time") or 2.0
 
     if session_string:
         print("[Auth] Initializing Telethon with StringSession loaded from MongoDB...")

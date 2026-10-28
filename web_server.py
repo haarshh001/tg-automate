@@ -267,7 +267,7 @@ DASHBOARD_HTML = """
             <p style="color:#94a3b8; font-size:13px; margin-bottom:20px;">
                 These credentials are saved directly in your MongoDB Atlas database. When switching Render accounts, everything auto-loads seamlessly.
             </p>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
                 <div class="form-group">
                     <label>Telegram API ID</label>
                     <input type="number" id="s_api_id">
@@ -283,6 +283,14 @@ DASHBOARD_HTML = """
                 <div class="form-group">
                     <label>Default Converter Bot</label>
                     <input type="text" id="s_conv_bot">
+                </div>
+                <div class="form-group">
+                    <label>Bot Timeout (Seconds)</label>
+                    <input type="number" id="s_timeout" value="25">
+                </div>
+                <div class="form-group">
+                    <label>Album Buffer Window (Sec)</label>
+                    <input type="number" step="0.5" id="s_buffer" value="2.0">
                 </div>
             </div>
             <div class="form-group">
@@ -426,6 +434,8 @@ DASHBOARD_HTML = """
                 document.getElementById('s_api_hash').value = cfg.api_hash || '';
                 document.getElementById('s_admin_id').value = cfg.admin_user_id || '';
                 document.getElementById('s_conv_bot').value = cfg.default_converter_bot || '';
+                document.getElementById('s_timeout').value = cfg.bot_convert_timeout || 25;
+                document.getElementById('s_buffer').value = cfg.album_buffer_time || 2.0;
                 document.getElementById('s_session').value = cfg.string_session || '';
             } catch (e) { console.error(e); }
         }
@@ -436,6 +446,8 @@ DASHBOARD_HTML = """
                 api_hash: document.getElementById('s_api_hash').value,
                 admin_user_id: parseInt(document.getElementById('s_admin_id').value),
                 default_converter_bot: document.getElementById('s_conv_bot').value,
+                bot_convert_timeout: parseInt(document.getElementById('s_timeout').value),
+                album_buffer_time: parseFloat(document.getElementById('s_buffer').value),
                 string_session: document.getElementById('s_session').value
             };
             const res = await fetch('/api/settings', {
